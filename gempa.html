@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peta Gempa Terkini BMKG</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        h1 {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Peta Gempa Terkini BMKG</h1>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script>
+        // Inisialisasi peta
+        const map = L.map('map').setView([-2.5489, 118.0149], 5); // Fokus Indonesia
+
+        // Tambahkan layer peta dasar
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // URL data gempa terkini BMKG
+        const BMKG_URL = 'https://data.bmkg.go.id/DataMKG/TEWS/gempaterkini.xml';
+
+        // Ambil dan parsing data BMKG
+        fetch(BMKG_URL)
+            .then(response => response.text())
+            .then(data => {
+                // Parsing XML
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(data, "application/xml");
+                const gempa = xml.getElementsByTagName("gempa");
+                
+                for (let i = 0; i < gempa.length; i++) {
+                    const lat = parseFloat(gempa[i].getElementsByTagName("Lintang")[0].textContent.replace(' LS', '').replace(' LU', '')) * (gempa[i].getElementsByTagName("Lintang")[0].textContent.includes('LS') ? -1 : 1);
+                    const lng = parseFloat(gempa[i].getElementsByTagName("Bujur")[0].textContent.replace(' BT', '').replace(' BB', '')) * (gempa[i].getElementsByTagName("Bujur")[0].textContent.includes('BB') ? -1 : 1);
+                    const magnitudo = gempa[i].getElementsByTagName("Magnitude")[0].textContent;
+                    const kedalaman = gempa[i].getElementsByTagName("Kedalaman")[0].textContent;
+                    const lokasi = gempa[i].getElementsByTagName("Wilayah")[0].textContent;
+
+                    // Tambahkan marker ke peta
+                    L.marker([lat, lng])
+                        .addTo(map)
+                        .bindPopup(`
+                            <strong>Lokasi:</strong> ${lokasi}<br>
+                            <strong>Magnitudo:</strong> ${magnitudo}<br>
+                            <strong>Kedalaman:</strong> ${kedalaman}
+                        `);
+                }
+            })
+            .catch(error => console.error("Error fetching data BMKG:", error));
+    </script>
+</body>
+</html>
